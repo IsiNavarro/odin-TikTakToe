@@ -1,52 +1,90 @@
-const boardContainer = document.getElementById('boardContainer');
+const displayController = (() => {
+    let cellBoxes = document.getElementsByClassName('cell');
+    const messageDiv = document.getElementById('message');
+    const restartBtn = document.getElementById('restart');
 
-function Cell(){
-    let value = "-";
-    let available = true;
+    cellBoxes = Array.from(cellBoxes);
 
-    const setValue = (selection) => {
-        if (available) {
-            value = selection;
-            available = false;
+    const updateBoard = () => {
+        for (let i = 0; i < cellBoxes.length; i++) {
+            cellBoxes[i].textContent = GameController.getBoard().getCellContent(i);
         }
-    }
-    const getValue = () => value;
-    
-    const getAvailable = () => available;
+    };
+    const setMessage = (str) => {
+        messageDiv.textContent = str;
+    };
+
+    cellBoxes.forEach((cell) => {
+        cell.addEventListener('click', (e) => {
+            if (GameController.getIsOver() || e.target.textContent !== "") return;
+            GameController.playRound(parseInt(e.target.id));
+            updateBoard();
+        })
+    })
+
+    restartBtn.addEventListener('click', (e) => {
+        GameController.reset()
+        updateBoard();
+        setMessage(`${GameController.getActivePlayer().name}'s turn`);
+    })
+
+    const setResultMessage = (winner) => {
+        if (winner === "Draw") {
+          setMessage("It's a draw!");
+        } else {
+          setMessage(`Player ${winner} has won!`);
+        }
+      };
 
     return {
-        getValue,
-        setValue,
-        getAvailable
+        setResultMessage,
+        setMessage
     }
-}
+})();
+
+
+
 
 function Board() {
-    const rows = 3;
-    const columns = 3;
+    const board = [
+        '', '', '',
+        '', '', '',
+        '', '', '',
+    ];
+    
+    const setCellContent = (index, team) => {
+        board[index] = team;
+    };
 
-    let board = {};
+    const getCellContent = (index) => {
+        return board[index];
+    };
+    const reset = () => {
+        for (let i = 0; i < board.length; i++) {
+            board[i] = "";
+        }
+    };
 
-    for (let i = 1; i <= rows; i++) {
-        for (let j = 1; j <= columns; j++) {
-            board[`${i}_${j}`] = Cell();
-        } 
+    return {
+        setCellContent,
+        getCellContent,
+        reset
     }
-
-    return board
-}
+};
 
 
-function GameController(playerOneName = "Player1", playerTwoName = "Player2") {
+const GameController = ((playerOneName = "Player X", playerTwoName = "Player O") => {
     const board = Board();
+    let isOver = false;
+    let round = 1;
 
     const players = [{
         name: playerOneName,
-        selection: "X"
+        team: "X"
     },
     {
         name: playerTwoName,
-        selection: "O"
+        team: "O"
     }
     ];
 
@@ -54,42 +92,65 @@ function GameController(playerOneName = "Player1", playerTwoName = "Player2") {
 
     const switchPlayerTurn = () => {
         activePlayer = activePlayer === players[0] ? players[1] : players[0];
-    }
-    
-    // Only needed when playing on console for display
-    const printBoard = () => {
-        let i = 0;
-        let string = '';
-        Object.keys(board).forEach(key => {
-            if (i === 3 || i === 6) {
-                console.log(string);
-                string = '';
-            }
-            string = string + board[key].getValue();
-            i++;
-        });
-        console.log(string)
-    }
+    };
     const getActivePlayer = () => activePlayer;
-    const printNewRound = () => {
-        printBoard();
-        console.log(`${getActivePlayer().name}'s turn`)
-    }
-    const playRound = (cell) => {  // cell has to be a string i.e: '1_1'
-        board[cell].setValue(getActivePlayer().selection);
+    const getIsOver = () => isOver;
+    const getBoard = () => board;
+
+    const playRound = (id) => { 
+        board.setCellContent(id ,activePlayer.team);
+
+        if (checkWin(id)) {
+            displayController.setResultMessage(activePlayer.name);
+            isOver = true;
+            return
+        }
+
+        if (round === 9) {
+            displayController.setResultMessage('Draw');
+            isOver = true;
+            return
+        }
         
         switchPlayerTurn();
-        printNewRound();
-    }
+        displayController.setMessage(`${activePlayer.name}'s turn`);
+        round++;
+    };
 
-    //Print first round
-    printNewRound();
+    const checkWin = (id) => {
+        const winConditions = [
+          [0, 1, 2],
+          [3, 4, 5],
+          [6, 7, 8],
+          [0, 3, 6],
+          [1, 4, 7],
+          [2, 5, 8],
+          [0, 4, 8],
+          [2, 4, 6],
+        ];
+        let combinations = winConditions.filter((combination) => combination.includes(id));
+        let win = combinations.some((possibleCombination) => possibleCombination.every((index) => board.getCellContent(index) === activePlayer.team));
+        
+        return win
+    };
+
+    const reset = () => {
+        board.reset();
+        isOver = false;
+        activePlayer = players[0];
+        round = 1;
+    };
+
+        //print first round message
+        displayController.setMessage(`${activePlayer.name}'s turn`);
 
     return {
         playRound,
-        getActivePlayer
+        getActivePlayer,
+        getIsOver,
+        getBoard,
+        reset
     }
-}
-const game = GameController();
+})();
 
 
