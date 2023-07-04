@@ -32,7 +32,7 @@ const displayController = (() => {
         if (winner === "Draw") {
           setMessage("It's a draw!");
         } else {
-          setMessage(`Player ${winner} has won!`);
+          setMessage(`${winner} has won!`);
         }
       };
 
